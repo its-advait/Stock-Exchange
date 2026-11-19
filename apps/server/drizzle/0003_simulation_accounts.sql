@@ -1,0 +1,3 @@
+ALTER TYPE "public"."account_type" ADD VALUE 'SIMULATION';--> statement-breakpoint
+ALTER TABLE "users" DROP CONSTRAINT "users_login_capability";--> statement-breakpoint
+ALTER TABLE "users" ADD CONSTRAINT "users_login_capability" CHECK (("users"."account_type"::text IN ('MARKET_MAKER', 'SIMULATION') AND "users"."password_hash" IS NULL AND "users"."role" = 'USER') OR ("users"."account_type" = 'HUMAN' AND "users"."password_hash" IS NOT NULL));

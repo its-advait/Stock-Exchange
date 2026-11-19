@@ -441,11 +441,11 @@ function Users() {
               <tbody>
                 {users.data?.map((u) => {
                   const self = u.id === me.data?.id;
-                  const mm = u.accountType === 'MARKET_MAKER';
+                  const mm = u.accountType !== 'HUMAN';
                   return (
                     <tr key={u.id} className="border-b border-border/60 last:border-0">
                       <td className="px-4 py-2.5 font-medium">{u.username}{self && <span className="ml-1.5 text-[11px] text-up">you</span>}</td>
-                      <td className="py-2.5 text-fg-muted">{mm ? 'Market maker' : 'Human'}</td>
+                      <td className="py-2.5 text-fg-muted">{u.accountType === 'MARKET_MAKER' ? 'Market maker' : u.accountType === 'SIMULATION' ? 'Simulation desk' : 'Human'}</td>
                       <td className="py-2.5"><Badge tone={u.role === 'ADMIN' ? 'warn' : 'neutral'}>{u.role}</Badge></td>
                       <td className="py-2.5"><Badge tone={u.status === 'ACTIVE' ? 'up' : 'down'}>{u.status}</Badge></td>
                       <td className="py-2.5 text-fg-muted">{dateTime(u.createdAt)}</td>

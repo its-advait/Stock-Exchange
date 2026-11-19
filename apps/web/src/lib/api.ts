@@ -112,7 +112,7 @@ export interface AdminUser {
   id: string;
   username: string;
   role: 'USER' | 'ADMIN';
-  accountType: 'HUMAN' | 'MARKET_MAKER';
+  accountType: 'HUMAN' | 'MARKET_MAKER' | 'SIMULATION';
   status: 'ACTIVE' | 'DISABLED';
   createdAt: string;
 }

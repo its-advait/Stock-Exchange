@@ -143,4 +143,4 @@ This starts a throwaway database and the production web build, then runs the two
 
 ## Deploying
 
-See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). In short: Railway builds the `Dockerfile`; each container start applies migrations and the idempotent seed before serving; one process serves the API, WebSockets and the web app from one HTTPS origin.
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). For a demo before the original prices exist, [docs/SIMULATED_HISTORY.md](docs/SIMULATED_HISTORY.md) explains the Active Rankings opening history. In short: Railway builds the `Dockerfile`; each container start applies migrations and the idempotent seed before serving; one process serves the API, WebSockets and the web app from one HTTPS origin.

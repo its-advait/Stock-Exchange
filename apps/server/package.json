@@ -20,7 +20,8 @@
     "db:migrate:prod": "node --env-file-if-exists=../../.env dist/scripts/migrate.js",
     "db:seed:prod": "node --env-file-if-exists=../../.env dist/scripts/seed.js",
     "db:import:prod": "node --env-file-if-exists=../../.env dist/scripts/import-securities.js",
-    "db:integrity:prod": "node --env-file-if-exists=../../.env dist/scripts/integrity.js"
+    "db:integrity:prod": "node --env-file-if-exists=../../.env dist/scripts/integrity.js",
+    "history:generate:prod": "node --env-file-if-exists=../../.env dist/scripts/generate-history.js"
   },
   "dependencies": {
     "@aez/shared": "0.1.0",

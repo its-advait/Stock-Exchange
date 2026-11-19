@@ -67,7 +67,7 @@ Status: ✅ done and tested · ⚠️ done with a stated limitation · ⛔ block
 | --- | --- | --- |
 | Last price changes only after a real execution | ✅ | Item 16 |
 | Never-traded securities show a labeled reference price | ✅ | `displayPriceKind`; UI badges |
-| No fabricated chart data | ✅ | Charts read `price_history` (one row per execution) |
+| No fabricated chart data | ✅ | Charts read `price_history` (one row per execution). The optional simulated opening history is made of real executions between simulation-desk accounts, not inserted chart points: `docs/SIMULATED_HISTORY.md`, `history.test.ts` |
 | Market maker with documented cash, inventory, explicit quotes, real accounting | ✅ | Item 20; `services/marketMaker.ts` |
 | Immutable issuance ledger; share supply conserved | ✅ | Triggers; integrity check; item 20 |
 

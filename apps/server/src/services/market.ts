@@ -1,4 +1,4 @@
-import { BROTHER_PROFILES, type MarketStatusView, type SecurityDetailView, type SecurityView, type TradeView, type MarketTradeView, type MarketSummaryView } from '@aez/shared';
+import { ACTIVE_RANKINGS, ACTIVE_RANKINGS_SOURCE, ACTIVITY_BY_TICKER, BROTHER_PROFILES, type MarketStatusView, type SecurityDetailView, type SecurityView, type TradeView, type MarketTradeView, type MarketSummaryView } from '@aez/shared';
 import type { Queryable } from '../db/pool.js';
 import { tradingBlockReason } from '../engine/tradability.js';
 import { notFound } from '../lib/errors.js';
@@ -123,11 +123,16 @@ export async function listSecurities(q: Queryable, search?: string): Promise<Sec
 }
 
 export async function getSecurity(q: Queryable, ticker: string): Promise<SecurityDetailView> {
-  const [rows, halt, notes] = await Promise.all([
+  const [rows, halt, notes, sim] = await Promise.all([
     q.query<SecurityRow>(`${SECURITY_SELECT} WHERE s.ticker = $1`, [ticker]),
     isMarketHalted(q),
     q.query<{ change_bps: number | null; note: string | null; kind: string }>(
       `SELECT change_bps, note, kind FROM security_history_notes WHERE ticker = $1 ORDER BY ordinal`,
+      [ticker],
+    ),
+    q.query(
+      `SELECT 1 FROM trades t JOIN users u ON u.id = t.seller_id OR u.id = t.buyer_id
+        WHERE t.ticker = $1 AND u.account_type = 'SIMULATION' LIMIT 1`,
       [ticker],
     ),
   ]);
@@ -141,6 +146,13 @@ export async function getSecurity(q: Queryable, ticker: string): Promise<Securit
     bookVersion: num(r.book_version),
     historicalNotes: notes.rows.map((n) => ({ changeBps: n.change_bps, note: n.note, kind: n.kind })),
     profile: (({ sector, tagline, profile }) => ({ sector, tagline, profile }))(BROTHER_PROFILES[r.ticker]!),
+    activity: (() => {
+      const a = ACTIVITY_BY_TICKER.get(r.ticker);
+      return a
+        ? { rank: a.activityRank, of: ACTIVE_RANKINGS.length, title: a.title, emailCount: a.emailCount, writeup: a.writeup, source: ACTIVE_RANKINGS_SOURCE }
+        : null;
+    })(),
+    simulatedHistory: (sim.rowCount ?? 0) > 0,
   };
 }
 

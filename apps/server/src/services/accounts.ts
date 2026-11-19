@@ -7,7 +7,7 @@ export interface UserRow {
   id: string;
   username: string;
   role: 'USER' | 'ADMIN';
-  account_type: 'HUMAN' | 'MARKET_MAKER';
+  account_type: 'HUMAN' | 'MARKET_MAKER' | 'SIMULATION';
   status: 'ACTIVE' | 'DISABLED';
   created_at: Date;
 }
@@ -75,6 +75,39 @@ export async function ensureMarketMaker(c: Queryable, username: string, starting
     );
   }
   return id;
+}
+
+/**
+ * Create (once) `count` simulation-desk traders named `${prefix}_1..N`. They
+ * cannot log in, are never ranked, and are funded exactly like a new human
+ * (an INITIAL_GRANT of `startingCashCents`), so the ledger stays conserved.
+ * Returns their ids in name order.
+ */
+export async function ensureSimulationTraders(c: Client, prefix: string, count: number, startingCashCents: bigint): Promise<string[]> {
+  const ms = await c.query<{ current_epoch: number }>(`SELECT current_epoch FROM market_state WHERE id = 1 FOR SHARE`);
+  const ids: string[] = [];
+  for (let i = 1; i <= count; i++) {
+    const username = `${prefix}_${i}`;
+    const ex = await c.query<{ id: string; account_type: string }>(`SELECT id, account_type FROM users WHERE lower(username) = lower($1)`, [username]);
+    if (ex.rows[0]) {
+      if (ex.rows[0].account_type !== 'SIMULATION') throw conflict('USERNAME_TAKEN', `Username ${username} belongs to a non-simulation account`);
+      ids.push(ex.rows[0].id);
+      continue;
+    }
+    const id = (
+      await c.query<{ id: string }>(
+        `INSERT INTO users (username, password_hash, role, account_type) VALUES ($1, NULL, 'USER', 'SIMULATION') RETURNING id`,
+        [username],
+      )
+    ).rows[0]!.id;
+    await c.query(`INSERT INTO cash_accounts (user_id, cash_cents) VALUES ($1, $2)`, [id, startingCashCents]);
+    await c.query(
+      `INSERT INTO cash_ledger (user_id, amount_cents, balance_after_cents, reason, epoch) VALUES ($1, $2, $2, 'INITIAL_GRANT', $3)`,
+      [id, startingCashCents, ms.rows[0]!.current_epoch],
+    );
+    ids.push(id);
+  }
+  return ids;
 }
 
 export async function getMarketMakerId(q: Queryable): Promise<string | null> {

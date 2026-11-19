@@ -38,7 +38,12 @@ const ts = (name: string) => timestamp(name, { withTimezone: true, mode: 'date' 
 /* --------------------------------- Enums --------------------------------- */
 
 export const userRole = pgEnum('user_role', ['USER', 'ADMIN']);
-export const accountType = pgEnum('account_type', ['HUMAN', 'MARKET_MAKER']);
+/**
+ * HUMAN: a person who logs in. MARKET_MAKER: the single system liquidity account.
+ * SIMULATION: system "simulation desk" traders used only by the history
+ * generator. Non-human accounts cannot log in and are never ranked.
+ */
+export const accountType = pgEnum('account_type', ['HUMAN', 'MARKET_MAKER', 'SIMULATION']);
 export const userStatus = pgEnum('user_status', ['ACTIVE', 'DISABLED']);
 export const securityStatus = pgEnum('security_status', ['ACTIVE', 'HALTED', 'SUSPENDED', 'UNLISTED']);
 /** Where a security's reference price / listing status came from. */
@@ -96,7 +101,8 @@ export const users = pgTable(
     check('users_username_format', sql`${t.username} ~ '^[A-Za-z0-9_]{3,32}$'`),
     check(
       'users_login_capability',
-      sql`(${t.accountType} = 'MARKET_MAKER' AND ${t.passwordHash} IS NULL AND ${t.role} = 'USER') OR (${t.accountType} = 'HUMAN' AND ${t.passwordHash} IS NOT NULL)`,
+      // ::text so the migration that adds the SIMULATION enum value can create this in the same transaction.
+      sql`(${t.accountType}::text IN ('MARKET_MAKER', 'SIMULATION') AND ${t.passwordHash} IS NULL AND ${t.role} = 'USER') OR (${t.accountType} = 'HUMAN' AND ${t.passwordHash} IS NOT NULL)`,
     ),
   ],
 );

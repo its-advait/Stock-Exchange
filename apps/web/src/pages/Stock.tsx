@@ -1,5 +1,5 @@
 import { CANONICAL_TICKERS } from '@aez/shared';
-import { BarChart2, CandlestickChart, History, LineChart, Newspaper, NotebookText, ScrollText } from 'lucide-react';
+import { BarChart2, Bot, CandlestickChart, History, LineChart, Newspaper, NotebookText, ScrollText, Trophy } from 'lucide-react';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
 import { PriceChart, type ChartStyle } from '@/components/charts';
@@ -196,6 +196,29 @@ function StockView({ ticker }: { ticker: string }) {
                   <p className="mt-2 text-[13px] leading-relaxed text-fg-muted">{s.profile.profile}</p>
                   {s.description && <p className="mt-3 text-[13px] leading-relaxed text-fg-muted">{s.description}</p>}
                   {s.background && <p className="mt-2 text-[13px] leading-relaxed text-fg-muted">{s.background}</p>}
+                  {s.activity && (
+                    <div className="mt-4 rounded-lg border border-border bg-bg-subtle p-3" data-testid="active-rankings">
+                      <div className="flex flex-wrap items-baseline justify-between gap-2">
+                        <p className="flex items-center gap-1.5 text-xs font-medium text-fg-muted">
+                          <Trophy className="size-3.5" /> Active Rankings
+                        </p>
+                        <p className="num text-xs text-fg-subtle">
+                          <span className="font-semibold text-fg">#{s.activity.rank}</span> of {s.activity.of} · {int(s.activity.emailCount)} ListServ emails
+                        </p>
+                      </div>
+                      <p className="mt-2 text-[13px] leading-relaxed">
+                        <span className="font-medium">{s.activity.title} {s.name}.</span>{' '}
+                        <span className="text-fg-muted">{s.activity.writeup}</span>
+                      </p>
+                      <p className="mt-2 text-[11px] text-fg-subtle">Source: {s.activity.source}. Reference content, not market data.</p>
+                    </div>
+                  )}
+                  {s.simulatedHistory && (
+                    <p className="mt-3 flex items-start gap-1.5 text-[11px] leading-relaxed text-fg-subtle" data-testid="simulated-history-note">
+                      <Bot className="mt-px size-3.5 shrink-0" />
+                      Opening history: the SIMULATED reference price comes from the Active Rankings, and the first trades were real executions between simulation-desk accounts, which can’t log in and aren’t ranked.
+                    </p>
+                  )}
                   <dl className="mt-4 grid grid-cols-2 gap-3 border-t border-border pt-4 text-[13px]">
                     <div>
                       <dt className="text-xs text-fg-subtle">Sector (fictional)</dt>
