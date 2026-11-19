@@ -11,6 +11,7 @@ COPY apps/web/package.json apps/web/
 RUN npm ci --no-audit --no-fund
 COPY packages packages
 COPY apps apps
+COPY data data
 RUN npm run build \
  && npm prune --omit=dev --no-audit --no-fund
 
