@@ -20,7 +20,10 @@ import { seedNews } from '../services/content.js';
 
 const cfg = loadConfig();
 configurePasswordHashing({ memoryCost: cfg.ARGON2_MEMORY_KIB, timeCost: cfg.ARGON2_TIME_COST });
-const pool = createPool(cfg.DATABASE_URL, 2);
+const pool = createPool(cfg.DATABASE_URL, 3);
+// Session-level advisory lock: if several replicas start at once, they seed one at a time.
+const lockClient = await pool.connect();
+await lockClient.query('SELECT pg_advisory_lock(727001)');
 try {
   await runMigrations(pool);
   const adminHash =
@@ -45,5 +48,7 @@ try {
   });
   console.log('Seed complete. All securities remain NON-TRADABLE until verified data is imported.');
 } finally {
+  await lockClient.query('SELECT pg_advisory_unlock(727001)').catch(() => {});
+  lockClient.release();
   await pool.end();
 }

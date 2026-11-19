@@ -30,10 +30,12 @@ Set these on the **app service**. Never commit real values; `.env` files are git
 3. **+ New → Database → PostgreSQL** in the same project. Railway Postgres stores its data on a persistent volume.
 4. On the app service, set `DATABASE_URL=${{Postgres.DATABASE_URL}}`, `ADMIN_USERNAME` and `ADMIN_PASSWORD`.
 5. **Settings → Networking → Generate Domain.** This sets `RAILWAY_PUBLIC_DOMAIN`, which becomes the default `WEB_ORIGINS`. If you use a custom domain, set `WEB_ORIGINS` to it explicitly.
-6. Deploy. Every deploy then runs:
-   * **pre-deploy:** `node apps/server/dist/scripts/seed.js`, which applies pending migrations and the idempotent seed (45 securities, notes, parody news, market-maker account, bootstrap admin if missing). It never deletes or resets anything; a second run inserts nothing.
-   * **start:** `node apps/server/dist/index.js`.
-   * **health check:** `GET /ready` (it queries the database). `GET /health` is a liveness probe that doesn't touch the database.
+6. Deploy. Every container start runs (see the `Dockerfile` `CMD`):
+   * **migrate + seed:** `node apps/server/dist/scripts/seed.js` applies pending migrations and the idempotent seed (45 securities, notes, parody news, market-maker account, bootstrap admin if missing). It never deletes or resets anything; a second run inserts nothing. It holds a Postgres advisory lock, so replicas starting together take turns.
+   * **start:** `node apps/server/dist/index.js`, only if the seed succeeded.
+   * **health check:** `GET /ready` returns 200 only when the database is reachable and migrated; otherwise 503. `GET /health` is a liveness probe that doesn't touch the database.
+
+   This lives in the image rather than in Railway's pre-deploy setting because Railway is retiring `railway.json` config (it is read only until 2026-12-01), and a service created from the CLI did not apply it.
 7. Open the domain, sign in as the admin, then remove `ADMIN_PASSWORD` (and `ADMIN_USERNAME`) from the variables.
 
 ## 3. Making securities tradable (safe production initialization)
@@ -56,10 +58,10 @@ Never run the simulation reset as part of a deployment. It requires a halted mar
 
 ## 4. Migrations
 
-* Migrations live in `apps/server/drizzle/` and are applied in order by the pre-deploy step, using Drizzle's migration journal (`drizzle.__drizzle_migrations`).
+* Migrations live in `apps/server/drizzle/` and are applied in order at container start, using Drizzle's migration journal (`drizzle.__drizzle_migrations`).
 * To add one: change `apps/server/src/db/schema.ts`, run `npm run db:generate -w @aez/server`, review the SQL, commit it, then deploy.
 * Write migrations so they are additive and backward-compatible (add columns as nullable or with defaults; backfill; tighten in a later release). The previous release keeps serving while the new one boots.
-* If a migration fails, the pre-deploy step fails and Railway keeps the previous deployment running. The migration runs in a transaction, so nothing partial is left behind.
+* If a migration fails, the new container exits before serving, its health check never passes, and Railway keeps the previous deployment running. The migration runs in a transaction, so nothing partial is left behind.
 
 ## 5. Logging and error monitoring
 

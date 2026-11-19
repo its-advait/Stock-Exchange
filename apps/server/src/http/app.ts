@@ -109,8 +109,10 @@ export async function buildApp(ctx: AppContext): Promise<FastifyInstance> {
   app.setNotFoundHandler((_req, reply) => reply.code(404).send({ error: { code: 'NOT_FOUND', message: 'Route not found' } }));
 
   app.get('/health', async () => ({ ok: true }));
-  app.get('/ready', async () => {
-    await ctx.pool.query('SELECT 1');
+  app.get('/ready', async (_req, reply) => {
+    // Ready only when the database is reachable AND migrated (market_state is created by a migration).
+    const r = await ctx.pool.query('SELECT 1 FROM market_state WHERE id = 1').catch(() => null);
+    if (!r || r.rowCount === 0) return reply.code(503).send({ ok: false, error: { code: 'NOT_MIGRATED', message: 'Database not ready' } });
     return { ok: true };
   });
 

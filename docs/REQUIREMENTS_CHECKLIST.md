@@ -122,7 +122,7 @@ Status: ✅ done and tested · ⚠️ done with a stated limitation · ⛔ block
 
 | Item | Status | Notes |
 | --- | --- | --- |
-| Production configuration | ✅ | `Dockerfile`, `railway.json` (pre-deploy migrate + idempotent seed, `/ready` health check) |
+| Production configuration | ✅ | `Dockerfile` (container start runs migrations + idempotent seed under an advisory lock, then the server), `railway.json` (`/ready` health check, which returns 503 until the schema exists) |
 | Environment variable docs, migrations, seed/import, health, logging, backup, safe initialization | ✅ | `docs/DEPLOYMENT.md` |
 | Rehearsed locally in production mode | ✅ | Compiled build, `NODE_ENV=production`, secure cookies, CSP; seed run twice (second run changes nothing); full e2e suite passed; restart preserved identical state; integrity check clean |
 | Deployed to Railway with a public HTTPS URL | ⛔ | Needs the GitHub repository and Railway access (see the final report) |

@@ -32,4 +32,6 @@ COPY --from=build --chown=node:node /app/apps/web/dist apps/web/dist
 COPY --from=build --chown=node:node /app/data data
 USER node
 EXPOSE 8080
-CMD ["node", "apps/server/dist/index.js"]
+# Apply pending migrations + the idempotent seed (never destructive), then serve.
+# The seed takes a Postgres advisory lock, so concurrent replicas cannot race.
+CMD ["sh", "-c", "node apps/server/dist/scripts/seed.js && exec node apps/server/dist/index.js"]
