@@ -270,7 +270,7 @@ export async function marketSummary(q: Queryable): Promise<MarketSummaryView> {
                   SELECT buyer_id AS u FROM trades WHERE executed_at > now() - interval '24 hours'
                   UNION SELECT seller_id FROM trades WHERE executed_at > now() - interval '24 hours') x
                  JOIN users ON users.id = x.u AND users.account_type = 'HUMAN')::bigint AS traders,
-              (SELECT COUNT(*) FROM users WHERE account_type = 'HUMAN' AND status = 'ACTIVE')::bigint AS ranked,
+              (SELECT COUNT(*) FROM users WHERE account_type = 'HUMAN' AND role = 'USER' AND status = 'ACTIVE')::bigint AS ranked,
               (SELECT MAX(executed_at) FROM trades) AS last_at`,
     ),
   ]);

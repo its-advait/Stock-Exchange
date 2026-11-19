@@ -16,7 +16,11 @@
     "db:local": "npm run db:local -w @aez/server",
     "db:migrate": "npm run db:migrate -w @aez/server",
     "db:seed": "npm run db:seed -w @aez/server",
-    "db:import": "npm run db:import -w @aez/server --"
+    "db:import": "npm run db:import -w @aez/server --",
+    "start": "npm run start -w @aez/server",
+    "db:migrate:prod": "npm run db:migrate:prod -w @aez/server",
+    "db:seed:prod": "npm run db:seed:prod -w @aez/server",
+    "test:e2e": "npm run test:e2e -w @aez/web"
   },
   "engines": {
     "node": ">=20.11"

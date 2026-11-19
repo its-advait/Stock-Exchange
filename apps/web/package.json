@@ -7,8 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc -b --noEmit",
-    "test": "vitest run"
+    "typecheck": "tsc -b --noEmit && tsc -p e2e/tsconfig.json",
+    "test": "vitest run",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@aez/shared": "0.1.0",
@@ -27,6 +28,7 @@
     "tailwind-merge": "3.7.0"
   },
   "devDependencies": {
+    "@playwright/test": "1.64.1",
     "@tailwindcss/vite": "4.3.4",
     "@testing-library/react": "16.3.3",
     "@types/react": "19.3.0",

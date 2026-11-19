@@ -114,7 +114,7 @@ export default function DashboardPage() {
             <StatBlock
               label="Rank"
               value={p?.rank ? `#${p.rank}` : '—'}
-              sub={p ? `of ${int(p.rankedUsers)} traders` : undefined}
+              sub={p ? (p.rank ? `of ${int(p.rankedUsers)} traders` : 'Admins are not ranked') : undefined}
             />
           </div>
           <div className="grid grid-cols-2 gap-4 border-t border-border p-4">

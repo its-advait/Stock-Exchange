@@ -14,7 +14,7 @@ const VALUATION_CTE = `
       JOIN cash_accounts c ON c.user_id = u.id
       LEFT JOIN holdings h ON h.user_id = u.id AND h.quantity > 0
       LEFT JOIN securities s ON s.ticker = h.ticker
-     WHERE u.account_type = 'HUMAN' AND u.status = 'ACTIVE'
+     WHERE u.account_type = 'HUMAN' AND u.role = 'USER' AND u.status = 'ACTIVE'
      GROUP BY u.id, u.username, u.created_at, c.cash_cents
   ), ranked AS (
     SELECT *, (cash_cents + holdings_value) AS total_value,

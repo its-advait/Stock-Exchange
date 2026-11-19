@@ -111,7 +111,7 @@ const VALUES_CTE = `
       JOIN cash_accounts c ON c.user_id = u.id
       LEFT JOIN holdings h ON h.user_id = u.id AND h.quantity > 0
       LEFT JOIN securities s ON s.ticker = h.ticker
-     WHERE u.account_type = 'HUMAN' AND u.status = 'ACTIVE'
+     WHERE u.account_type = 'HUMAN' AND u.role = 'USER' AND u.status = 'ACTIVE'
      GROUP BY u.id, u.username, u.created_at, c.cash_cents
   ), ranked AS (
     SELECT *, (cash_cents + holdings_value) AS total_value,
@@ -161,7 +161,7 @@ function bigTrade(r: BigTradeDbRow): BigTradeRow {
 const BIG_TRADE_SQL = (dir: 'DESC' | 'ASC', cmp: '>' | '<') => `
   SELECT t.id, t.seller_id, u.username, t.ticker, t.quantity, t.price_cents, t.seller_realized_pnl_cents, t.executed_at
     FROM trades t JOIN users u ON u.id = t.seller_id
-   WHERE u.account_type = 'HUMAN' AND u.status = 'ACTIVE'
+   WHERE u.account_type = 'HUMAN' AND u.role = 'USER' AND u.status = 'ACTIVE'
      AND t.seller_realized_pnl_cents IS NOT NULL AND t.seller_realized_pnl_cents ${cmp} 0
      AND ($2::uuid IS NULL OR t.seller_id = $2)
    ORDER BY t.seller_realized_pnl_cents ${dir}, t.id ASC LIMIT $1`;
@@ -176,7 +176,7 @@ export async function leaderboardBoards(q: Queryable, startingCash: bigint, limi
          FROM (SELECT buyer_id AS uid, quantity, price_cents FROM trades
                UNION ALL SELECT seller_id, quantity, price_cents FROM trades) x
          JOIN users u ON u.id = x.uid
-        WHERE u.account_type = 'HUMAN' AND u.status = 'ACTIVE'
+        WHERE u.account_type = 'HUMAN' AND u.role = 'USER' AND u.status = 'ACTIVE'
         GROUP BY u.id, u.username
         ORDER BY trades DESC, notional DESC, u.username LIMIT $1`,
       [limit],
@@ -210,7 +210,7 @@ export async function leaderboardBoards(q: Queryable, startingCash: bigint, limi
 /** Public summary: no cash balance breakdown beyond the leaderboard, no orders, no share counts. */
 export async function traderProfile(q: Queryable, username: string, startingCash: bigint): Promise<TraderProfileView> {
   const u = await q.query<{ id: string; username: string; created_at: Date }>(
-    `SELECT id, username, created_at FROM users WHERE lower(username) = lower($1) AND account_type = 'HUMAN' AND status = 'ACTIVE'`,
+    `SELECT id, username, created_at FROM users WHERE lower(username) = lower($1) AND account_type = 'HUMAN' AND role = 'USER' AND status = 'ACTIVE'`,
     [username],
   );
   const user = u.rows[0];

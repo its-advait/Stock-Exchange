@@ -7,6 +7,8 @@ Every user starts with $10,000 of virtual cash. Trades go through a real price-t
 * [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md): matching engine, lock order, accounting invariants, outbox, and security
 * [docs/API.md](docs/API.md): REST and Socket.IO reference for frontend work
 * [docs/DATA_IMPORT.md](docs/DATA_IMPORT.md): how to import and verify the original prices and statuses
+* [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md): Railway deployment, environment variables, migrations, backups
+* [docs/REQUIREMENTS_CHECKLIST.md](docs/REQUIREMENTS_CHECKLIST.md): every requirement with its implementation and test
 
 ## Stack
 
@@ -127,37 +129,18 @@ npm run typecheck
 npm run db:integrity -w @aez/server
 ```
 
+## Browser tests
+
+```bash
+npx playwright install chromium
+```
+
+```bash
+npm run build && npm run test:e2e
+```
+
+This starts a throwaway database and the production web build, then runs the two-trader demo, rejections, cancellation, partial fills and a phone-sized check.
+
 ## Deploying
 
-1. Provision PostgreSQL and set the environment:
-   * `DATABASE_URL`
-   * `NODE_ENV=production`
-   * `WEB_ORIGINS=https://your-frontend`
-   * `TRUST_PROXY=true` if you are behind a proxy
-
-   `COOKIE_SECURE` defaults to true in production. If the frontend and API are on different sites, serve them under one site, for example `app.example.com` and `api.example.com`. The cookie is `SameSite=Lax`.
-2. Build:
-
-   ```bash
-   npm ci
-   ```
-
-   ```bash
-   npm run build
-   ```
-
-3. Seed once:
-
-   ```bash
-   npm run db:seed
-   ```
-
-4. Start the server:
-
-   ```bash
-   npm run start -w @aez/server
-   ```
-
-   It serves `/health` and `/ready`.
-
-To run more than one instance, set `SOCKET_IO_PG_ADAPTER=true`. Matching is already safe across instances.
+See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). In short: Railway builds the `Dockerfile`; a pre-deploy step applies migrations and the idempotent seed; one process serves the API, WebSockets and the web app from one HTTPS origin.

@@ -16,11 +16,11 @@ const envSchema = z.object({
   /** Comma separated list of browser origins allowed to call the API with credentials. */
   WEB_ORIGINS: z
     .string()
-    .default('http://localhost:5173')
+    .optional()
     .transform((s) =>
-      s
+      (s ?? '')
         .split(',')
-        .map((x) => x.trim())
+        .map((x) => x.trim().replace(/\/$/, ''))
         .filter(Boolean),
     ),
   TRUST_PROXY: bool(false),
@@ -41,6 +41,13 @@ const envSchema = z.object({
   OUTBOX_POLL_MS: z.coerce.number().int().min(50).default(1000),
   ADMIN_USERNAME: z.string().optional(),
   ADMIN_PASSWORD: z.string().optional(),
+  /**
+   * Directory holding the built web app (apps/web/dist). When set (or auto-detected in
+   * production), the API also serves the SPA from the same origin.
+   */
+  WEB_DIST_DIR: z.string().optional(),
+  /** Set automatically by Railway; used as the default allowed origin when WEB_ORIGINS is unset. */
+  RAILWAY_PUBLIC_DOMAIN: z.string().optional(),
 });
 
 export type AppConfig = Omit<z.infer<typeof envSchema>, 'COOKIE_SECURE'> & { COOKIE_SECURE: boolean };
@@ -54,9 +61,27 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env, overrides: Part
   const { COOKIE_SECURE, ...rest } = parsed.data;
   const cookieSecure =
     COOKIE_SECURE === undefined ? rest.NODE_ENV === 'production' : COOKIE_SECURE === 'true' || COOKIE_SECURE === '1';
+  if (rest.WEB_ORIGINS.length === 0) {
+    if (rest.RAILWAY_PUBLIC_DOMAIN) rest.WEB_ORIGINS = [`https://${rest.RAILWAY_PUBLIC_DOMAIN}`];
+    else if (rest.NODE_ENV !== 'production') rest.WEB_ORIGINS = ['http://localhost:5173'];
+    // Production with no origin: allowed for CLI scripts (migrate/seed); the server refuses to start (assertServable).
+  }
   const cfg: AppConfig = { ...rest, COOKIE_SECURE: cookieSecure, ...overrides };
+  if (cfg.NODE_ENV === 'production' && !cfg.COOKIE_SECURE) {
+    throw new Error('COOKIE_SECURE must not be disabled in production');
+  }
+  if (cfg.NODE_ENV === 'production' && cfg.WEB_ORIGINS.some((o) => !/^https:\/\//.test(o) && !/^http:\/\/localhost(:\d+)?$/.test(o))) {
+    throw new Error('WEB_ORIGINS must be https:// origins in production');
+  }
   if (cfg.STARTING_CASH_CENTS !== 1_000_000n && cfg.NODE_ENV === 'production') {
     throw new Error('STARTING_CASH_CENTS must be exactly 1000000 ($10,000.00) in production');
   }
   return cfg;
+}
+
+/** Checks that only matter for a process that serves HTTP (not for migrate/seed scripts). */
+export function assertServable(cfg: AppConfig): void {
+  if (cfg.WEB_ORIGINS.length === 0) {
+    throw new Error('WEB_ORIGINS must be set in production (the public https:// origin of the site, e.g. https://aez.up.railway.app)');
+  }
 }
