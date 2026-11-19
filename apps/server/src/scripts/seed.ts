@@ -16,6 +16,7 @@ import { withTx } from '../db/tx.js';
 import { createUserInTx, ensureMarketMaker } from '../services/accounts.js';
 import { configurePasswordHashing, hashPassword } from '../services/passwords.js';
 import { seedUniverse } from '../services/securitiesAdmin.js';
+import { seedNews } from '../services/content.js';
 
 const cfg = loadConfig();
 configurePasswordHashing({ memoryCost: cfg.ARGON2_MEMORY_KIB, timeCost: cfg.ARGON2_TIME_COST });
@@ -29,6 +30,7 @@ try {
   await withTx(pool, async (c) => {
     const { inserted } = await seedUniverse(c);
     console.log(`Securities: ${inserted} inserted (45 canonical total).`);
+    console.log(`Fictional news: ${await seedNews(c)} default parody stories inserted.`);
     const mm = await ensureMarketMaker(c, cfg.MARKET_MAKER_USERNAME, cfg.MARKET_MAKER_STARTING_CASH_CENTS);
     console.log(`Market maker account: ${mm}`);
     if (adminHash && cfg.ADMIN_USERNAME) {

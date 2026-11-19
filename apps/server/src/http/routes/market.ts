@@ -3,7 +3,9 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { getOrderBook } from '../../engine/book.js';
 import { notFound } from '../../lib/errors.js';
-import { getSecurity, listSecurities, marketStatus, movers, priceHistory, recentTrades } from '../../services/market.js';
+import { listNews } from '../../services/content.js';
+import { leaderboardBoards, traderProfile } from '../../services/insights.js';
+import { getSecurity, listSecurities, marketStatus, marketSummary, marketTrades, movers, priceHistory, recentTrades } from '../../services/market.js';
 import { leaderboard } from '../../services/portfolio.js';
 import { parse, tickerParam, type AppContext } from '../context.js';
 
@@ -53,5 +55,34 @@ export async function marketRoutes(app: FastifyInstance, ctx: AppContext) {
       req.query,
     );
     return { entries: await leaderboard(pool, cfg.STARTING_CASH_CENTS, q.limit, q.offset) };
+  });
+
+  app.get('/leaderboard/boards', async (req) => {
+    const q = parse(z.object({ limit: z.coerce.number().int().min(1).max(50).default(10) }), req.query);
+    return { boards: await leaderboardBoards(pool, cfg.STARTING_CASH_CENTS, q.limit) };
+  });
+
+  app.get('/traders/:username', async (req) => {
+    const { username } = parse(z.object({ username: z.string().regex(/^[A-Za-z0-9_]{3,32}$/) }), req.params);
+    return { trader: await traderProfile(pool, username, cfg.STARTING_CASH_CENTS) };
+  });
+
+  app.get('/market/trades', async (req) => {
+    const p = parse(paginationSchema, req.query);
+    return { trades: await marketTrades(pool, p.limit, p.before) };
+  });
+
+  app.get('/market/summary', async () => ({ summary: await marketSummary(pool) }));
+
+  app.get('/news', async (req) => {
+    const q = parse(
+      z.object({
+        ticker: z.string().regex(/^[A-Za-z]{1,8}$/).transform((t) => t.toUpperCase()).optional(),
+        limit: z.coerce.number().int().min(1).max(100).default(20),
+        before: z.iso.datetime({ offset: true }).optional(),
+      }),
+      req.query,
+    );
+    return { posts: await listNews(pool, q) };
   });
 }

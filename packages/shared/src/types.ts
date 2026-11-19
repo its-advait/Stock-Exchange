@@ -40,6 +40,15 @@ export interface SecurityView {
   bestBidCents: number | null;
   bestAskCents: number | null;
   volume24h: number;
+  /** Executions in the last 24h. */
+  trades24h: number;
+  /** Price 24h ago: the last trade at or before then, else the reference price. */
+  price24hAgoCents: number | null;
+  /** displayPrice minus price24hAgo; null when either is unknown. */
+  change24hCents: number | null;
+  change24hBps: number | null;
+  /** Shares issued in the current epoch (market maker inventory issuance). */
+  sharesOutstanding: number;
   description: string;
   imageUrl: string | null;
 }
@@ -50,6 +59,8 @@ export interface SecurityDetailView extends SecurityView {
   tradingRestriction: string | null;
   bookVersion: number;
   historicalNotes: { changeBps: number | null; note: string | null; kind: string }[];
+  /** Fictional, parody business profile (always label as fictional in the UI). */
+  profile: { sector: string; tagline: string; profile: string };
 }
 
 export interface BookLevel {
@@ -147,6 +158,9 @@ export interface PortfolioView {
   unrealizedPnlCents: number;
   rank: number | null;
   rankedUsers: number;
+  /** Total value 24h ago (or at account creation, if newer), from ledgers marked at that time's prices. */
+  dayStartValueCents: number;
+  dayChangeCents: number;
   holdings: HoldingView[];
   openOrders: OrderView[];
 }
@@ -168,6 +182,105 @@ export interface MarketStatusView {
   serverTime: string;
 }
 
+export interface PortfolioHistoryPoint {
+  at: string;
+  valueCents: number;
+  cashCents: number;
+}
+
+export interface PortfolioHistoryView {
+  range: '1D' | '1W' | '1M' | 'ALL';
+  startingCashCents: number;
+  points: PortfolioHistoryPoint[];
+}
+
+export interface NewsPostView {
+  id: string;
+  ticker: string | null;
+  headline: string;
+  body: string;
+  /** Always true: every story is fictional parody. */
+  parody: true;
+  label: string;
+  author: string;
+  hidden: boolean;
+  createdAt: string;
+}
+
+export interface MarketTradeView extends TradeView {
+  name: string;
+}
+
+export interface MarketSummaryView {
+  securities: number;
+  tradableSecurities: number;
+  haltedSecurities: number;
+  tradedSecurities: number;
+  trades24h: number;
+  volume24h: number;
+  notional24hCents: number;
+  activeTraders24h: number;
+  rankedUsers: number;
+  lastTradeAt: string | null;
+}
+
+export interface LeaderRow {
+  rank: number;
+  userId: string;
+  username: string;
+  totalValueCents: number;
+  pnlCents: number;
+  /** pnl / starting cash, in basis points. */
+  returnBps: number;
+}
+
+export interface ActivityRow {
+  userId: string;
+  username: string;
+  trades: number;
+  sharesTraded: number;
+  notionalCents: number;
+}
+
+export interface BigTradeRow {
+  tradeId: number;
+  userId: string;
+  username: string;
+  ticker: string;
+  quantity: number;
+  priceCents: number;
+  realizedPnlCents: number;
+  executedAt: string;
+}
+
+export interface LeaderboardBoardsView {
+  rankedUsers: number;
+  startingCashCents: number;
+  topTrader: LeaderRow | null;
+  richest: LeaderRow[];
+  poorest: LeaderRow[];
+  highestProfit: LeaderRow[];
+  highestReturn: LeaderRow[];
+  mostActive: ActivityRow[];
+  biggestWins: BigTradeRow[];
+  biggestLosses: BigTradeRow[];
+}
+
+export interface TraderProfileView {
+  username: string;
+  joinedAt: string;
+  rank: number | null;
+  rankedUsers: number;
+  totalValueCents: number;
+  pnlCents: number;
+  returnBps: number;
+  trades: number;
+  realizedPnlCents: number;
+  /** Composition by market value, in basis points of total value (cash included as "CASH"). No share counts or balances beyond what the public leaderboard shows. */
+  composition: { ticker: string; weightBps: number }[];
+  biggestWin: BigTradeRow | null;
+}
+
 /* ------------------------------ Socket.IO ------------------------------ */
 
 /** Rooms: `market` (auto-joined), `ticker:<TICKER>` (via `subscribe`), `user:<id>` (auto, authenticated only). */
@@ -178,6 +291,7 @@ export interface ServerToClientEvents {
   'market.status': (e: { eventId: number; open: boolean; reason: string | null }) => void;
   'security.status': (e: { eventId: number; ticker: string }) => void;
   'market.reset': (e: { eventId: number; epoch: number }) => void;
+  news: (e: { eventId: number; post: NewsPostView }) => void;
   /** Account-specific; delivered only to the owning authenticated user. */
   order: (e: { eventId: number; order: OrderView }) => void;
   'portfolio.changed': (e: { eventId: number; reason: string }) => void;

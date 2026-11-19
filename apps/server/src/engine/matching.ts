@@ -257,13 +257,18 @@ export async function placeOrderInTx(c: Client, input: PlaceOrderInput): Promise
     const buyOrderId = input.side === 'BUY' ? takerId : maker.id;
     const sellOrderId = input.side === 'BUY' ? maker.id : takerId;
 
+    // Average-cost basis removal (floor). Selling the whole position removes all basis.
+    const sellerHoldPre = hold.get(sellerId)!;
+    const removedBasis = (sellerHoldPre.basis * f.quantity) / sellerHoldPre.qty;
+    const sellerRealized = n - removedBasis;
+
     const tradeRow = (
       await c.query<TradeRow>(
         `INSERT INTO trades (ticker, price_cents, quantity, buy_order_id, sell_order_id, buyer_id, seller_id,
-                             maker_order_id, taker_order_id, aggressor_side)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                             maker_order_id, taker_order_id, aggressor_side, seller_realized_pnl_cents)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
          RETURNING id, ticker, price_cents, quantity, aggressor_side, executed_at`,
-        [input.ticker, f.price, f.quantity, buyOrderId, sellOrderId, buyerId, sellerId, maker.id, takerId, input.side],
+        [input.ticker, f.price, f.quantity, buyOrderId, sellOrderId, buyerId, sellerId, maker.id, takerId, input.side, sellerRealized],
       )
     ).rows[0]!;
     await c.query(
@@ -283,10 +288,8 @@ export async function placeOrderInTx(c: Client, input: PlaceOrderInput): Promise
 
     buyerHold.qty += f.quantity;
     buyerHold.basis += n;
-    // Average-cost basis removal (floor). Selling the whole position removes all basis.
-    const removedBasis = (sellerHold.basis * f.quantity) / sellerHold.qty;
     sellerHold.basis -= removedBasis;
-    sellerHold.realized += n - removedBasis;
+    sellerHold.realized += sellerRealized;
     sellerHold.qty -= f.quantity;
     if (makerSide === 'SELL') sellerHold.reserved -= f.quantity;
     buyerCash.dirty = sellerCash.dirty = buyerHold.dirty = sellerHold.dirty = true;

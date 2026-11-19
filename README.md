@@ -17,6 +17,7 @@ Every user starts with $10,000 of virtual cash. Trades go through a real price-t
 * argon2id password hashing and HttpOnly cookie sessions
 * Zod validation
 * Vitest
+* Web (`apps/web`): React 19, Vite, Tailwind CSS 4, Radix primitives (shadcn-style components), Lucide icons, TanStack Query, TradingView Lightweight Charts, socket.io-client
 
 ## Local setup
 
@@ -75,6 +76,14 @@ You need Node 20.11 or newer. You don't need Docker or a system Postgres: `npm r
    * `POST /api/admin/market-maker/:ticker/open`
 
    See [docs/API.md](docs/API.md).
+
+7. Start the web app on `http://localhost:5173`. Its dev server proxies `/api` and `/socket.io` to the API on port 4000, so session cookies stay same-origin:
+
+   ```bash
+   npm run dev:web
+   ```
+
+   Set `AEZ_API_URL` to proxy to a different API. For a production build served from another origin, set `VITE_API_URL` at build time and add that origin to the API's `WEB_ORIGINS`.
 
 You can use any PostgreSQL 14 or newer instead of step 2. Set `DATABASE_URL` and skip `db:local`.
 

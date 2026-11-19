@@ -4,6 +4,8 @@ import {
   haltRequestSchema,
   listingStatusChangeSchema,
   marketMakerConfigSchema,
+  newsPostSchema,
+  newsVisibilitySchema,
   paginationSchema,
   simulatedReferenceSchema,
   simulationResetSchema,
@@ -14,6 +16,7 @@ import { cancelOrder } from '../../engine/matching.js';
 import { audit } from '../../lib/audit.js';
 import { iso, num } from '../../lib/json.js';
 import { createUser } from '../../services/accounts.js';
+import { createNews, listNews, setNewsHidden } from '../../services/content.js';
 import { haltMarket, haltSymbol, resumeMarket, resumeSymbol } from '../../services/halts.js';
 import { checkIntegrity } from '../../services/integrity.js';
 import { openLiquidity, upsertMarketMakerConfig } from '../../services/marketMaker.js';
@@ -53,6 +56,23 @@ export async function adminRoutes(app: FastifyInstance, ctx: AppContext) {
     const user = await updateUser(pool, actor(req), id, body);
     ctx.kickOutbox();
     return { user };
+  });
+
+  /* --------------------------- Fictional news -------------------------- */
+  app.get('/news', async (req) => {
+    const q = parse(z.object({ limit: z.coerce.number().int().min(1).max(200).default(100) }), req.query);
+    return { posts: await listNews(pool, { limit: q.limit, includeHidden: true }) };
+  });
+  app.post('/news', async (req, reply) => {
+    const body = parse(newsPostSchema, req.body);
+    const post = await createNews(pool, actor(req), body);
+    ctx.kickOutbox();
+    return reply.code(201).send({ post });
+  });
+  app.patch('/news/:id', async (req) => {
+    const { id } = parse(uuidParam, req.params);
+    const { hidden } = parse(newsVisibilitySchema, req.body);
+    return { post: await setNewsHidden(pool, actor(req), id, hidden) };
   });
 
   /* ------------------------------- Halts ------------------------------- */

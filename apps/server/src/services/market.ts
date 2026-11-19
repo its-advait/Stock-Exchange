@@ -1,4 +1,4 @@
-import type { MarketStatusView, SecurityDetailView, SecurityView, TradeView } from '@aez/shared';
+import { BROTHER_PROFILES, type MarketStatusView, type SecurityDetailView, type SecurityView, type TradeView, type MarketTradeView, type MarketSummaryView } from '@aez/shared';
 import type { Queryable } from '../db/pool.js';
 import { tradingBlockReason } from '../engine/tradability.js';
 import { notFound } from '../lib/errors.js';
@@ -24,6 +24,9 @@ interface SecurityRow {
   best_bid: bigint | null;
   best_ask: bigint | null;
   volume_24h: bigint;
+  trades_24h: bigint;
+  price_24h_ago: bigint | null;
+  shares_outstanding: bigint;
 }
 
 const SECURITY_SELECT = `
@@ -38,7 +41,14 @@ const SECURITY_SELECT = `
            WHERE o.ticker = s.ticker AND o.side = 'SELL' AND o.status IN ('OPEN', 'PARTIALLY_FILLED')
            ORDER BY o.limit_price_cents ASC LIMIT 1) AS best_ask,
          (SELECT COALESCE(SUM(t.quantity), 0)::bigint FROM trades t
-           WHERE t.ticker = s.ticker AND t.executed_at > now() - interval '24 hours') AS volume_24h
+           WHERE t.ticker = s.ticker AND t.executed_at > now() - interval '24 hours') AS volume_24h,
+         (SELECT COUNT(*)::bigint FROM trades t
+           WHERE t.ticker = s.ticker AND t.executed_at > now() - interval '24 hours') AS trades_24h,
+         COALESCE((SELECT ph.price_cents FROM price_history ph
+                    WHERE ph.ticker = s.ticker AND ph.recorded_at <= now() - interval '24 hours'
+                    ORDER BY ph.recorded_at DESC, ph.id DESC LIMIT 1), s.reference_price_cents) AS price_24h_ago,
+         (SELECT COALESCE(SUM(i.quantity), 0)::bigint FROM security_issuance i
+           WHERE i.ticker = s.ticker AND i.epoch = (SELECT current_epoch FROM market_state WHERE id = 1)) AS shares_outstanding
     FROM securities s`;
 
 export async function isMarketHalted(q: Queryable): Promise<{ reason: string; startedAt: Date } | null> {
@@ -81,6 +91,14 @@ function toView(r: SecurityRow, marketHalted: boolean): SecurityView {
     bestBidCents: num(r.best_bid),
     bestAskCents: num(r.best_ask),
     volume24h: num(r.volume_24h),
+    trades24h: num(r.trades_24h),
+    price24hAgoCents: num(r.price_24h_ago),
+    change24hCents: display !== null && r.price_24h_ago !== null ? num(display - r.price_24h_ago) : null,
+    change24hBps:
+      display !== null && r.price_24h_ago !== null && r.price_24h_ago > 0n
+        ? num(((display - r.price_24h_ago) * 10000n) / r.price_24h_ago)
+        : null,
+    sharesOutstanding: num(r.shares_outstanding),
     description: r.description,
     imageUrl: r.image_url,
   };
@@ -122,6 +140,7 @@ export async function getSecurity(q: Queryable, ticker: string): Promise<Securit
     tradingRestriction: r.trading_restriction,
     bookVersion: num(r.book_version),
     historicalNotes: notes.rows.map((n) => ({ changeBps: n.change_bps, note: n.note, kind: n.kind })),
+    profile: (({ sector, tagline, profile }) => ({ sector, tagline, profile }))(BROTHER_PROFILES[r.ticker]!),
   };
 }
 
@@ -225,5 +244,47 @@ export async function marketStatus(q: Queryable): Promise<MarketStatusView> {
     marketHalt: halt ? { reason: halt.reason, startedAt: iso(halt.startedAt)! } : null,
     epoch: ms.rows[0]!.current_epoch,
     serverTime: new Date().toISOString(),
+  };
+}
+
+/** Most recent executions across all securities (public tape). */
+export async function marketTrades(q: Queryable, limit: number, beforeId?: number): Promise<MarketTradeView[]> {
+  const r = await q.query<TradeRow & { name: string }>(
+    `SELECT t.id, t.ticker, t.price_cents, t.quantity, t.aggressor_side, t.executed_at, s.name
+       FROM trades t JOIN securities s ON s.ticker = t.ticker
+      WHERE ($2::bigint IS NULL OR t.id < $2)
+      ORDER BY t.id DESC LIMIT $1`,
+    [limit, beforeId ?? null],
+  );
+  return r.rows.map((t) => ({ ...tradeView(t), name: t.name }));
+}
+
+export async function marketSummary(q: Queryable): Promise<MarketSummaryView> {
+  const [secs, agg] = await Promise.all([
+    listSecurities(q),
+    q.query<{ trades: bigint; volume: bigint; notional: bigint; traders: bigint; ranked: bigint; last_at: Date | null }>(
+      `SELECT (SELECT COUNT(*) FROM trades WHERE executed_at > now() - interval '24 hours')::bigint AS trades,
+              (SELECT COALESCE(SUM(quantity), 0) FROM trades WHERE executed_at > now() - interval '24 hours')::bigint AS volume,
+              (SELECT COALESCE(SUM(quantity * price_cents), 0) FROM trades WHERE executed_at > now() - interval '24 hours')::bigint AS notional,
+              (SELECT COUNT(DISTINCT u) FROM (
+                  SELECT buyer_id AS u FROM trades WHERE executed_at > now() - interval '24 hours'
+                  UNION SELECT seller_id FROM trades WHERE executed_at > now() - interval '24 hours') x
+                 JOIN users ON users.id = x.u AND users.account_type = 'HUMAN')::bigint AS traders,
+              (SELECT COUNT(*) FROM users WHERE account_type = 'HUMAN' AND status = 'ACTIVE')::bigint AS ranked,
+              (SELECT MAX(executed_at) FROM trades) AS last_at`,
+    ),
+  ]);
+  const a = agg.rows[0]!;
+  return {
+    securities: secs.length,
+    tradableSecurities: secs.filter((s) => s.tradable).length,
+    haltedSecurities: secs.filter((s) => s.symbolHalted || s.listingStatus === 'HALTED' || s.listingStatus === 'SUSPENDED').length,
+    tradedSecurities: secs.filter((s) => s.lastPriceCents !== null).length,
+    trades24h: num(a.trades),
+    volume24h: num(a.volume),
+    notional24hCents: num(a.notional),
+    activeTraders24h: num(a.traders),
+    rankedUsers: num(a.ranked),
+    lastTradeAt: iso(a.last_at),
   };
 }

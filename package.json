@@ -8,10 +8,11 @@
     "apps/*"
   ],
   "scripts": {
-    "build": "npm run build -w @aez/shared && npm run build -w @aez/server",
-    "typecheck": "npm run typecheck -w @aez/shared && npm run typecheck -w @aez/server",
-    "test": "npm run test -w @aez/server",
+    "build": "npm run build -w @aez/shared && npm run build -w @aez/server && npm run build -w @aez/web",
+    "typecheck": "npm run typecheck -w @aez/shared && npm run typecheck -w @aez/server && npm run typecheck -w @aez/web",
+    "test": "npm run test -w @aez/server && npm run test -w @aez/web",
     "dev": "npm run dev -w @aez/server",
+    "dev:web": "npm run dev -w @aez/web",
     "db:local": "npm run db:local -w @aez/server",
     "db:migrate": "npm run db:migrate -w @aez/server",
     "db:seed": "npm run db:seed -w @aez/server",

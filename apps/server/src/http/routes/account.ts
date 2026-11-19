@@ -1,7 +1,10 @@
-import { paginationSchema } from '@aez/shared';
+import { paginationSchema, portfolioRangeSchema } from '@aez/shared';
+import { z } from 'zod';
+import { addToWatchlist, getWatchlist, removeFromWatchlist } from '../../services/content.js';
+import { portfolioHistory } from '../../services/insights.js';
 import type { FastifyInstance } from 'fastify';
 import { cashLedgerFor, myTrades, portfolio, positionLedgerFor } from '../../services/portfolio.js';
-import { parse, requireUser, type AppContext } from '../context.js';
+import { parse, requireUser, tickerParam, type AppContext } from '../context.js';
 
 export async function accountRoutes(app: FastifyInstance, ctx: AppContext) {
   const { pool, cfg } = ctx;
@@ -28,5 +31,27 @@ export async function accountRoutes(app: FastifyInstance, ctx: AppContext) {
     const user = requireUser(req);
     const p = parse(paginationSchema, req.query);
     return { entries: await positionLedgerFor(pool, user.id, p.limit, p.before) };
+  });
+
+  /** Account value over time, reconstructed from the ledgers and real executions. */
+  app.get('/portfolio/history', async (req) => {
+    const user = requireUser(req);
+    const { range } = parse(z.object({ range: portfolioRangeSchema.default('1W') }), req.query);
+    return { history: await portfolioHistory(pool, user.id, range, cfg.STARTING_CASH_CENTS) };
+  });
+
+  app.get('/watchlist', async (req) => {
+    const user = requireUser(req);
+    return { tickers: await getWatchlist(pool, user.id) };
+  });
+  app.put('/watchlist/:ticker', async (req) => {
+    const user = requireUser(req);
+    const { ticker } = parse(tickerParam, req.params);
+    return { tickers: await addToWatchlist(pool, user.id, ticker) };
+  });
+  app.delete('/watchlist/:ticker', async (req) => {
+    const user = requireUser(req);
+    const { ticker } = parse(tickerParam, req.params);
+    return { tickers: await removeFromWatchlist(pool, user.id, ticker) };
   });
 }

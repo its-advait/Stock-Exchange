@@ -3,6 +3,7 @@ import type { Queryable } from '../db/pool.js';
 import { notFound } from '../lib/errors.js';
 import { iso, num } from '../lib/json.js';
 import { ORDER_COLUMNS, orderView, type OrderRow } from '../lib/views.js';
+import { dayStartValue } from './insights.js';
 
 /** Mark price = last traded price, else reference price (labeled). */
 const VALUATION_CTE = `
@@ -43,7 +44,7 @@ export async function leaderboard(q: Queryable, startingCash: bigint, limit: num
 }
 
 export async function portfolio(q: Queryable, userId: string, startingCash: bigint): Promise<PortfolioView> {
-  const [acct, hold, open, rank] = await Promise.all([
+  const [acct, hold, open, rank, dayStart] = await Promise.all([
     q.query<{ cash_cents: bigint; reserved_cents: bigint }>(`SELECT cash_cents, reserved_cents FROM cash_accounts WHERE user_id = $1`, [
       userId,
     ]),
@@ -70,6 +71,7 @@ export async function portfolio(q: Queryable, userId: string, startingCash: bigi
       [userId],
     ),
     q.query<{ rank: bigint; ranked_users: bigint }>(`${VALUATION_CTE} SELECT rank, ranked_users FROM ranked WHERE user_id = $1`, [userId]),
+    dayStartValue(q, userId),
   ]);
   const a = acct.rows[0];
   if (!a) throw notFound('Account');
@@ -119,6 +121,8 @@ export async function portfolio(q: Queryable, userId: string, startingCash: bigi
     unrealizedPnlCents: num(unrealized),
     rank: rank.rows[0] ? num(rank.rows[0].rank) : null,
     rankedUsers: rank.rows[0] ? num(rank.rows[0].ranked_users) : 0,
+    dayStartValueCents: num(dayStart),
+    dayChangeCents: num(total - dayStart),
     holdings,
     openOrders: open.rows.map(orderView),
   };

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>AEZ Stock Exchange</title>
+    <meta name="description" content="AEZ Stock Exchange: a fictional, virtual-money-only trading simulation for the Alpha Epsilon Zeta brotherhood. Invest in your brothers." />
+    <meta name="theme-color" content="#0a0c0f" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f7f8f9" media="(prefers-color-scheme: light)" />
+    <meta property="og:title" content="AEZ Stock Exchange" />
+    <meta property="og:description" content="Invest in your brothers. Short their potential. (Virtual money only.)" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+    <script>
+      try {
+        var t = localStorage.getItem('aez-theme');
+        if (t === 'light') document.documentElement.classList.add('light');
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

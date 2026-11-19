@@ -48,6 +48,13 @@ Field rules:
 | GET | `/securities/:ticker/history?interval=trade\|1m\|5m\|15m\|1h\|1d&from=&to=&limit=` | Real executions only. `interval=trade` returns `{kind:'trade'}` points; any other interval returns OHLCV `{kind:'bar'}` points. Also returns `referencePriceCents` and `referencePriceKind`. An empty array means the security has never traded |
 | GET | `/market/movers?limit=5` | `{ gainers, losers }` by change from reference (bps). Only traded securities appear |
 | GET | `/leaderboard?limit=&offset=` | `{ entries: LeaderboardEntry[] }`: total value is cash plus holdings marked at last price (or reference). The market maker is excluded |
+| GET | `/leaderboard/boards?limit=` | `{ boards: LeaderboardBoardsView }`: `topTrader`, `richest`, `poorest`, `highestProfit`, `highestReturn`, `mostActive`, `biggestWins`, `biggestLosses`. Wins and losses use the realized P&L stored on each trade at execution |
+| GET | `/traders/:username` | `{ trader: TraderProfileView }`: public summary only (equity, P&L, rank, trade count, allocation weights in bps). No cash balance, share counts or orders |
+| GET | `/market/trades?limit=&before=` | `{ trades: MarketTradeView[] }`: market-wide tape, newest first |
+| GET | `/market/summary` | `{ summary: MarketSummaryView }`: tradable count, 24h trades/volume/notional, active traders |
+| GET | `/news?ticker=&limit=&before=` | `{ posts: NewsPostView[] }`. Every post is `parody: true` with the label "Fictional AEZ Market News" |
+
+`SecurityView` also carries 24h stats computed from real executions: `trades24h`, `price24hAgoCents`, `change24hCents`, `change24hBps`, and `sharesOutstanding` (issued in the current epoch).
 
 `SecurityView` fields worth knowing:
 
@@ -93,6 +100,9 @@ Other order routes:
 | GET | `/account/trades` | `MyTradeView[]`: includes side, maker/taker, and notional |
 | GET | `/account/ledger/cash` | Cash ledger entries: `INITIAL_GRANT`, `TRADE_BUY`, `TRADE_SELL` |
 | GET | `/account/ledger/positions` | Position ledger entries |
+| GET | `/portfolio/history?range=1D\|1W\|1M\|ALL` | `{ history: PortfolioHistoryView }`: equity reconstructed from the cash and position ledgers, marked at the executed price at each moment. `PortfolioView` also has `dayStartValueCents` and `dayChangeCents` |
+| GET | `/watchlist` | `{ tickers: string[] }` |
+| PUT / DELETE | `/watchlist/:ticker` | Add or remove. At most 45 entries |
 
 ## Admin (ADMIN role)
 
@@ -115,6 +125,9 @@ All routes are under `/admin`. Actions are audited.
 | GET | `/admin/integrity` | `{ ok, violations[], stats }` |
 | POST | `/admin/simulation/reset` | `{ confirmation: "RESET THE AEZ STOCK EXCHANGE SIMULATION", password, reason }`. The market must be halted first |
 | GET | `/admin/simulation/resets` | Reset history |
+| GET | `/admin/news` | All posts, including hidden ones |
+| POST | `/admin/news` | `{ headline, body, ticker? }`. Always published as parody; pushes a `news` socket event |
+| PATCH | `/admin/news/:id` | `{ hidden }` |
 
 ## Socket.IO
 
@@ -130,6 +143,7 @@ socket.on('portfolio.changed', () => { /* refetch /portfolio */ });
 socket.on('market.status', ({ open, reason }) => {});
 socket.on('security.status', ({ ticker }) => { /* refetch security */ });
 socket.on('market.reset', ({ epoch }) => { /* refetch everything */ });
+socket.on('news', ({ eventId, post }) => {});
 ```
 
 Delivery is at-least-once, so de-duplicate by `eventId`. Typed event maps are `ServerToClientEvents` and `ClientToServerEvents` in `@aez/shared`.

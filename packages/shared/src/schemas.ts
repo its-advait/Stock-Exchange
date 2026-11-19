@@ -156,3 +156,20 @@ export const simulationResetSchema = z
     reason: z.string().trim().min(5).max(1000),
   })
   .strict();
+
+/* ------------------------------- UI support ------------------------------- */
+
+export const portfolioRangeSchema = z.enum(['1D', '1W', '1M', 'ALL']);
+
+export const newsPostSchema = z
+  .object({
+    ticker: tickerSchema.nullable().default(null),
+    headline: z.string().trim().min(3).max(160),
+    body: z.string().trim().max(4000).default(''),
+  })
+  .strict();
+export type NewsPostRequest = z.infer<typeof newsPostSchema>;
+
+export const newsVisibilitySchema = z.object({ hidden: z.boolean() }).strict();
+
+export const WATCHLIST_MAX = 45;

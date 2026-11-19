@@ -347,6 +347,8 @@ export const trades = pgTable(
     makerOrderId: uuid('maker_order_id').notNull(),
     takerOrderId: uuid('taker_order_id').notNull(),
     aggressorSide: orderSide('aggressor_side').notNull(),
+    /** Seller's realized P&L on this fill (proceeds minus average-cost basis removed). NULL only for pre-0002 rows. */
+    sellerRealizedPnlCents: money('seller_realized_pnl_cents'),
     executedAt: ts('executed_at').notNull().defaultNow(),
   },
   (t) => [
@@ -587,3 +589,43 @@ export const simulationResets = pgTable('simulation_resets', {
   summary: jsonb('summary').notNull(),
   createdAt: ts('created_at').notNull().defaultNow(),
 });
+
+/* ------------------------- Fictional news & watchlist --------------------- */
+
+/** Fictional, parody-labeled AEZ market news. Never presented as real-world reporting. */
+export const newsPosts = pgTable(
+  'news_posts',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    /** NULL = market-wide story. */
+    ticker: text('ticker').references(() => securities.ticker),
+    headline: text('headline').notNull(),
+    body: text('body').notNull().default(''),
+    /** Seed key for idempotent seeding of the default stories; NULL for admin-written posts. */
+    seedKey: text('seed_key'),
+    authorUserId: uuid('author_user_id').references(() => users.id),
+    hidden: boolean('hidden').notNull().default(false),
+    createdAt: ts('created_at').notNull().defaultNow(),
+  },
+  (t) => [
+    index('news_posts_created_idx').on(t.createdAt),
+    index('news_posts_ticker_idx').on(t.ticker, t.createdAt),
+    uniqueIndex('news_posts_seed_key_uq').on(t.seedKey),
+    check('news_headline_len', sql`char_length(${t.headline}) BETWEEN 3 AND 160`),
+    check('news_body_len', sql`char_length(${t.body}) <= 4000`),
+  ],
+);
+
+export const watchlistItems = pgTable(
+  'watchlist_items',
+  {
+    userId: uuid('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    ticker: text('ticker')
+      .notNull()
+      .references(() => securities.ticker),
+    createdAt: ts('created_at').notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.ticker] })],
+);
