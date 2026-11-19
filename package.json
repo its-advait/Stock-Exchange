@@ -1,0 +1,29 @@
+{
+  "name": "aez-stock-exchange",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build -w @aez/shared && npm run build -w @aez/server",
+    "typecheck": "npm run typecheck -w @aez/shared && npm run typecheck -w @aez/server",
+    "test": "npm run test -w @aez/server",
+    "dev": "npm run dev -w @aez/server",
+    "db:local": "npm run db:local -w @aez/server",
+    "db:migrate": "npm run db:migrate -w @aez/server",
+    "db:seed": "npm run db:seed -w @aez/server",
+    "db:import": "npm run db:import -w @aez/server --"
+  },
+  "engines": {
+    "node": ">=20.11"
+  },
+  "allowScripts": {
+    "esbuild@0.18.20": true,
+    "esbuild@0.25.12": true,
+    "esbuild@0.28.2": true,
+    "@embedded-postgres/darwin-arm64@17.11.0-beta.19": true
+  }
+}

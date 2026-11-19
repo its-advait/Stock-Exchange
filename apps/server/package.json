@@ -1,0 +1,45 @@
+{
+  "name": "@aez/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --conditions=source --env-file-if-exists=../../.env src/index.ts",
+    "start": "node --env-file-if-exists=../../.env dist/index.js",
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:generate": "drizzle-kit generate",
+    "db:local": "tsx --conditions=source --env-file-if-exists=../../.env src/scripts/local-db.ts",
+    "db:migrate": "tsx --conditions=source --env-file-if-exists=../../.env src/scripts/migrate.ts",
+    "db:seed": "tsx --conditions=source --env-file-if-exists=../../.env src/scripts/seed.ts",
+    "db:import": "tsx --conditions=source --env-file-if-exists=../../.env src/scripts/import-securities.ts",
+    "db:simulate": "tsx --conditions=source --env-file-if-exists=../../.env src/scripts/simulate-dev.ts",
+    "db:integrity": "tsx --conditions=source --env-file-if-exists=../../.env src/scripts/integrity.ts"
+  },
+  "dependencies": {
+    "@aez/shared": "0.1.0",
+    "@fastify/cookie": "11.1.5",
+    "@fastify/cors": "11.4.3",
+    "@fastify/helmet": "13.2.0",
+    "@fastify/rate-limit": "11.2.2",
+    "@node-rs/argon2": "2.2.2",
+    "@socket.io/postgres-adapter": "0.5.0",
+    "drizzle-orm": "0.45.4",
+    "fastify": "5.12.8",
+    "pg": "8.23.1",
+    "socket.io": "4.8.4",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "@types/pg": "8.23.1",
+    "drizzle-kit": "0.31.11",
+    "embedded-postgres": "17.11.0-beta.19",
+    "socket.io-client": "4.8.4",
+    "tsx": "4.23.15",
+    "typescript": "5.9.3",
+    "vitest": "5.0.5"
+  }
+}
